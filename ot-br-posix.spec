@@ -36,6 +36,7 @@ BuildRequires:  systemd-rpm-macros
 Requires:       libcjson1
 Requires:       libjsoncpp27
 Requires:       iproute2
+Requires:       ipset
 %systemd_requires
 
 %description
