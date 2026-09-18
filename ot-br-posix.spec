@@ -33,8 +33,8 @@ BuildRequires:  pkgconfig(libcjson)
 BuildRequires:  pkgconfig(libsystemd)
 BuildRequires:  readline-devel
 BuildRequires:  systemd-rpm-macros
-Requires:       cJSON
-Requires:       jsoncpp
+Requires:       libcjson1
+Requires:       libjsoncpp27
 Requires:       iproute2
 %systemd_requires
 
