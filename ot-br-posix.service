@@ -1,0 +1,38 @@
+[Unit]
+Description=OpenThread Border Router daemon (otbr-agent)
+Documentation=https://openthread.io/guides/border_router
+After=network-online.target dbus.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=otbr
+Group=otbr
+ExecStart=/usr/sbin/otbr-agent
+WorkingDirectory=/var/lib/otbr
+Restart=on-failure
+RestartSec=5s
+
+# Hardening — the border router agent needs to read/write its data directory,
+# read config, reach the network for Thread RCP/device communication, and access
+# D-Bus for mDNS/firewall integration. Device access to RCP serial ports is granted
+# via device rules, not CAP_SYS_RESOURCE.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=false
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=false
+ReadWritePaths=/var/lib/otbr /var/log/otbr /etc/otbr
+ProtectClock=true
+SystemCallFilter=~@reboot @swap
+
+[Install]
+WantedBy=multi-user.target

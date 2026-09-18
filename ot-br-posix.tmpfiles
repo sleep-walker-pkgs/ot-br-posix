@@ -1,0 +1,3 @@
+d /var/lib/otbr 0750 otbr otbr -
+d /var/log/otbr 0750 otbr otbr -
+d /etc/otbr 0750 otbr otbr -
