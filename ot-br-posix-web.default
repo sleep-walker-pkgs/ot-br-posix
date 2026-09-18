@@ -1,0 +1,2 @@
+# Environment for otbr-web.service (OpenThread Border Router web UI)
+OTBR_WEB_OPTS="-I wpan0 -d6 -s -a 0.0.0.0 -p 8083 -A 0.0.0.0 -P 8082"

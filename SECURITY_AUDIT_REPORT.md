@@ -4,6 +4,32 @@
 **Audit Scope:** ot-br-posix v2026.08.0 and pinned submodules  
 **Status:** ✓ Comprehensive security audit completed
 
+## Addendum (packaging decision, post-audit)
+
+This audit's cpp-httplib findings (Section 2/3 below) drove a packaging decision that
+overrides what the rest of this document assumes:
+
+- **cJSON** ships from the distribution (`cJSON`/`cJSON-devel`), as originally planned; its
+  security updates ride on openSUSE's own package maintenance going forward.
+- **cpp-httplib is vendored into the source tarball at v0.53.1**, not taken from the system
+  package and not left at the v0.19.0 the upstream ot-br-posix submodule pin points at.
+  ot-br-posix's own CMake (`src/web/CMakeLists.txt`, `src/rest/CMakeLists.txt`) has no
+  `find_package`/pkg-config path for cpp-httplib — it always compiles directly against
+  `third_party/cpp-httplib/repo`, so "install the system -devel package" (the original plan)
+  does not actually apply; the header must be vendored regardless. Given that, vendoring the
+  current release (v0.53.1, released after all four CVEs below were fixed, including the
+  CRITICAL WebSocket use-after-free) closes every cpp-httplib finding in this report outright,
+  rather than shipping a 5+ year old header with known CVEs. httplib.h is a single-file,
+  stable-API header (`Server`, `Get`/`Post`, `set_content`, `set_mount_point`, `listen`) —
+  ot-br-posix's usage compiled and linked against v0.53.1 without modification, confirmed by a
+  real OBS-equivalent local build (see build verification note in project README/commit log).
+- **openthread submodule (Section 4 findings)**: CVE-2026-8369 (NAT64 IHL validation) applies
+  only when `OT_NAT64_BORDER_ROUTING`/`OT_NAT64_TRANSLATOR` are enabled, which they are in this
+  build (matching the Docker deployment's NAT64-capable config). This is an upstream openthread
+  fix (commit 26a882d) not yet in a tagged release as of v2026.08.0 — tracked as a follow-up to
+  backport on the next package revision, not a blocker for this initial package (the same
+  exposure existed identically in the Docker image being replaced).
+
 ---
 
 ## Executive Summary

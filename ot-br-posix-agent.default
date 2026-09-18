@@ -1,0 +1,7 @@
+# Environment for otbr-agent.service (OpenThread Border Router agent)
+#
+# Radio co-processor URL, Thread interface name, and infrastructure
+# (upstream/adjacent IP network) interface name are mandatory positional
+# arguments -- adjust to match the actual RCP device and network interfaces
+# on this host.
+OTBR_AGENT_OPTS="-d6 -v -s --vendor-name OpenThread --model-name BorderRouter -I wpan0 -B enp0s31f6 spinel+hdlc+uart:///dev/ttyUSB0?uart-baudrate=460800&uart-flow-control trel://enp0s31f6 --rest-listen-address 0.0.0.0 --rest-listen-port 8082"

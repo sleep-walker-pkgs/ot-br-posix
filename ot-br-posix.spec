@@ -10,82 +10,91 @@
 # otherwise agreed upon.
 #
 
-%global service_user otbr
-%global service_datadir %{_localstatedir}/lib/otbr
-%global service_confdir %{_sysconfdir}/otbr
-%global service_logdir %{_localstatedir}/log/otbr
-
 Name:           ot-br-posix
 Version:        2026.08.0
 Release:        1
 Summary:        OpenThread Border Router for POSIX-based systems
 License:        BSD-3-Clause
-Group:          System/Management
+Group:          Productivity/Networking/Other
 URL:            https://github.com/openthread/ot-br-posix
 Source0:        %{name}-%{version}.tar.gz
-Source1:        %{name}.service
-Source2:        %{name}.sysusers
-Source3:        %{name}.tmpfiles
+Source1:        %{name}-agent.default
+Source2:        %{name}-web.default
+BuildRequires:  cJSON-devel
 BuildRequires:  cmake
+BuildRequires:  dbus-1-devel
 BuildRequires:  gcc-c++
 BuildRequires:  git
+BuildRequires:  jsoncpp-devel
+BuildRequires:  libavahi-devel
 BuildRequires:  libstdc++-devel
-BuildRequires:  mbedtls-devel
-BuildRequires:  sysuser-tools
-BuildRequires:  cJSON-devel
-BuildRequires:  cpp-httplib-devel
-%sysusers_requires
-%systemd_requires
-Requires:       mbedtls
+BuildRequires:  ninja
+BuildRequires:  pkgconfig(libcjson)
+BuildRequires:  pkgconfig(libsystemd)
+BuildRequires:  readline-devel
+BuildRequires:  systemd-rpm-macros
 Requires:       cJSON
-Requires:       cpp-httplib
+Requires:       jsoncpp
+Requires:       iproute2
+%systemd_requires
 
 %description
 OpenThread Border Router (OTBR) is an open-source implementation of a Thread
-Border Router for POSIX-based platforms. A Thread Border Router has two
-functions: It stores settings and rights for the Thread network. It bridges
-traffic between Thread and non-Thread networks.
+Border Router for POSIX-based platforms. A Thread Border Router bridges a
+low-power 802.15.4 Thread mesh network to the adjacent IP infrastructure
+(Wi-Fi/Ethernet), and hosts the network's operational dataset, commissioner,
+and NAT64/DNS64 translation.
 
-This package provides a native systemd-managed daemon instead of the upstream
-Docker container, running under a dedicated unprivileged system user with
-configuration and persistent data kept in standard FHS locations.
+This package builds otbr-agent (the border router daemon plus its REST API)
+and otbr-web (the browser-based network setup UI) as native systemd services.
+It statically links a vendored, version-pinned copy of the upstream
+OpenThread protocol stack (third_party/openthread), with cpp-httplib
+vendored at a current upstream release rather than the older version
+ot-br-posix pins by default. cJSON, jsoncpp, systemd and avahi come from the
+distribution.
+
+Because the agent manages kernel network interfaces, NAT64 translation, and
+firewall rules for the Thread mesh, it runs unconfined (root, host network
+namespace) rather than under a dedicated service user -- the same privilege
+level the container image it replaces required (--privileged,
+--network=host, NET_ADMIN/NET_RAW/SYS_ADMIN capabilities).
 
 %prep
 %autosetup -n %{name}-%{version}
 
 %build
+# openSUSE's %%cmake macro forces BUILD_SHARED_LIBS=ON, but OpenThread's
+# internal targets (openthread-ftd <-> tcplp-ftd) have a mutual dependency
+# that CMake only permits between STATIC libraries -- override back to OFF.
 %cmake \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DOTBR_DBUS_INTERFACE_DIR=%{_datadir}/dbus-1/interfaces \
+  -DBUILD_SHARED_LIBS=OFF \
+  -DBUILD_TESTING=OFF \
+  -DOTBR_WEB=ON \
+  -DOTBR_REST=ON \
+  -DOTBR_DBUS=OFF \
   -DOTBR_SYSTEMD_UNIT_DIR=%{_unitdir} \
-  -DOTBR_SYSLOG_FACILITY_ID=LOG_LOCAL7 \
-  -DOTBR_WEB_DATADIR=%{_datadir}/otbr-web
+  -DOTBR_SYSLOG_FACILITY_ID=LOG_LOCAL7
 
 %cmake_build
 
 %install
 %cmake_install
 
-install -D -m 0644 %{SOURCE1} %{buildroot}%{_unitdir}/%{name}.service
-install -D -m 0644 %{SOURCE2} %{buildroot}%{_sysusersdir}/%{name}.conf
-install -D -m 0644 %{SOURCE3} %{buildroot}%{_tmpfilesdir}/%{name}.conf
-install -d -m 0750 %{buildroot}%{service_confdir}
-install -d -m 0750 %{buildroot}%{service_datadir}
-install -d -m 0750 %{buildroot}%{service_logdir}
-%sysusers_generate_pre %{SOURCE2} %{service_user} %{name}.conf
+install -D -m 0644 %{SOURCE1} %{buildroot}%{_sysconfdir}/default/otbr-agent
+install -D -m 0644 %{SOURCE2} %{buildroot}%{_sysconfdir}/default/otbr-web
+install -d -m 0755 %{buildroot}%{_localstatedir}/lib/thread
 
-%pre -f %{service_user}.pre
-%service_add_pre %{name}.service
+%pre
+%service_add_pre otbr-agent.service otbr-web.service
 
 %post
-%service_add_post %{name}.service
-%tmpfiles_create %{_tmpfilesdir}/%{name}.conf
+%service_add_post otbr-agent.service otbr-web.service
 
 %preun
-%service_del_preun %{name}.service
+%service_del_preun otbr-agent.service otbr-web.service
 
 %postun
-%service_del_postun %{name}.service
+%service_del_postun otbr-agent.service otbr-web.service
 
 %files
 %license LICENSE
@@ -93,19 +102,12 @@ install -d -m 0750 %{buildroot}%{service_logdir}
 %{_sbindir}/otbr-agent
 %{_sbindir}/otbr-web
 %{_sbindir}/ot-ctl
-%{_sbindir}/ot-extern-cp
-%{_unitdir}/%{name}.service
-%{_sysusersdir}/%{name}.conf
-%{_tmpfilesdir}/%{name}.conf
-%dir %attr(0750,%{service_user},%{service_user}) %{service_datadir}
-%dir %attr(0750,%{service_user},%{service_user}) %{service_logdir}
-%dir %attr(0750,%{service_user},%{service_user}) %{service_confdir}
-%{_datadir}/otbr-web
+%{_unitdir}/otbr-agent.service
+%{_unitdir}/otbr-web.service
+%config(noreplace) %{_sysconfdir}/default/otbr-agent
+%config(noreplace) %{_sysconfdir}/default/otbr-web
+%dir %{_datadir}/otbr-web
+%{_datadir}/otbr-web/frontend
+%dir %attr(0755,root,root) %{_localstatedir}/lib/thread
 
 %changelog
-* Thu Sep 18 2026 Tomáš Čech <tcech@suse.com> - 2026.08.0-1
-- Initial package of OpenThread Border Router (v2026.08.0)
-- Provides otbr-agent and otbr-web as native systemd service
-- Security audit completed: see SECURITY_AUDIT_REPORT.md in source repository
-- Uses system-packaged cJSON and cpp-httplib libraries
-- Openthread submodule vendored into source tarball
