@@ -111,3 +111,17 @@ install -d -m 0755 %{buildroot}%{_localstatedir}/lib/thread
 %dir %attr(0755,root,root) %{_localstatedir}/lib/thread
 
 %changelog
+* Fri Sep 18 2026 Tomáš Čech <tcech@suse.com> - 2026.08.0-1
+- Initial package of OpenThread Border Router (ot-br-posix), replacing a
+  Docker container deployment with a native systemd service.
+- Vendors a pinned, version-matched copy of the upstream OpenThread protocol
+  stack (third_party/openthread, including its own nested mbedtls submodule)
+  since it is not available as a standalone distribution package.
+- Vendors cpp-httplib at a current upstream release (v0.53.1) rather than
+  the older version ot-br-posix's own submodule pin points at, closing a
+  critical WebSocket use-after-free and three other CVEs identified during
+  packaging's security audit (see SECURITY_AUDIT_REPORT.md in the source
+  repository).
+- Uses the distribution's cJSON rather than vendoring it.
+- Vendors pre-built otbr-web frontend JavaScript/CSS assets, since the OBS
+  build environment has no network access for a live npm install.
