@@ -22,7 +22,7 @@ Summary:        OpenThread Border Router for POSIX-based systems
 License:        BSD-3-Clause
 Group:          System/Management
 URL:            https://github.com/openthread/ot-br-posix
-Source0:        https://github.com/openthread/ot-br-posix/archive/refs/tags/v%{version}.tar.gz#/%{name}-%{version}.tar.gz
+Source0:        %{name}-%{version}.tar.gz
 Source1:        %{name}.service
 Source2:        %{name}.sysusers
 Source3:        %{name}.tmpfiles
